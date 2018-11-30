@@ -34,7 +34,7 @@ library(tidyverse)
 
 
 # set the working directory, I assume that the datafile is saved in here
-setwd("C:/Users/msassrb2/Dropbox (The University of Manchester)/Rcode/MasteringMetrics/NHIS")
+setwd("C:/Users/msassrb2/Dropbox (The University of Manchester)/Rcode/MasteringMetrics/MasteringMetrics/NHIS")
 
 nhis_data <- read_dta("NHIS2009_clean.dta")
 ```
@@ -142,6 +142,8 @@ NHIS_temp <- NHIS_temp %>%
 
 We are now left with `r nrow(NHIS_temp)` observations which corresponds to the number of observations reported in Table 1.1 (add up the observations for the four groups reported in Table 1.1).
 
+Let's see what the proportion of males and females are that have health insurance. In the following table we also report the sum of the `perweight` variable in each group. 
+
 ```{r}
 NHIS_temp %>%
   group_by(fml) %>%
@@ -156,6 +158,87 @@ NHIS_temp %>%
 ```
 
 Compare sample statistics of mean and women, with and without health insurance.
+
+
+To start with we calculate the average age of the four groups (males and females with and without health insurance).
+
+```{r}
+NHIS_temp_diff <- NHIS_temp %>%
+  group_by(fml, hi) %>%
+  summarise(mean = mean(age, na.rm = TRUE)) 
+```
+
+```{r NHIS2009_diff_table2,results='asis'}
+knitr::kable(NHIS_temp_diff, digits = 3)
+```
+
+
+When comparing these stats to Table 1.1 in Mastering Metrics you will be able to detect slight differences. For instance in the published table the average age for husbands who have some HI is 43.98, whereas here it is 44.163.
+
+The reason for that is that the above calculations do not take into account the weighting of the variables but treat each observation with the same weight. Let's re-calculate the Table but now we will compute a mean that uses the variable `perweight` as a weighting variable using the `weighted.mean` function.
+
+```{r}
+NHIS_temp_diff <- NHIS_temp %>%
+  group_by(fml, hi) %>%
+  summarise(wmean = weighted.mean(age,perweight, na.rm = TRUE)) %>%
+  spread(hi,wmean)   # this spreads the hi variable into columns
+
+```
+
+```{r NHIS2009_diff_table3,results='asis'}
+knitr::kable(NHIS_temp_diff, digits = 3)
+```
+
+The labelling is a bit unclear, so let's change that by taking the previous table and adding an additional pipe to change the column names.
+
+```{r}
+NHIS_temp_diff <- NHIS_temp_diff %>%
+  setNames( c("female", "no insurance", "insurance") ) 
+```
+
+```{r NHIS2009_diff_table3,results='asis'}
+knitr::kable(NHIS_temp_diff, digits = 3)
+```
+
+Now we get the correct mean (i.e. the mean you can find in Mastering Metrics Table 1.1) in the table.
+
+Table 1.1 also calculates the differences between the two groups (insured and not insured) and then performs a hypothesis test to establish whether there are statisticaly significant differences.
+
+
+```{r, message = FALSE, warning=FALSE}
+library(weights)
+
+f1hi1 <- NHIS_temp %>%    # female and health insurance
+          filter(fml == 1, hi == 1) %>%
+          select(age,perweight)
+
+f1hi0 <- NHIS_temp %>%    # female and health insurance
+          filter(fml == 1, hi == 0) %>%
+          select(age,perweight)
+
+f0hi1 <- NHIS_temp %>%    # female and health insurance
+          filter(fml == 0, hi == 1) %>%
+          select(age,perweight)
+
+f0hi0 <- NHIS_temp %>%    # female and health insurance
+          filter(fml == 0, hi == 0) %>%
+          select(age,perweight)
+
+
+wttest <- wtd.t.test(f1hi1$age, f1hi0$age, f1hi1$perweight, f1hi0$perweight,bootse=TRUE)
+wttest
+```
+
+
+The variables we are interested in are defined in the following list:
+
+```{r}
+varlist <- c("hlth", "nwhite", "age", "yedu", "famsize", "empl", "inc")
+```
+
+
+
+
 
 ```{r NHIS2009_diff}
 varlist <- c("hlth", "nwhite", "age", "yedu", "famsize", "empl", "inc")
@@ -177,17 +260,3 @@ NHIS_temp_diff <- NHIS_temp %>%
 knitr::kable(NHIS_temp_diff, digits = 3)
 ```
 
-When comparing these stats to Table 1.1 in Mastering Metrics you will be able to detect slight differences. For instance in the published table the average age for husbands who have some HI is 43.98, whereas here it is 44.163.
-
-Let's try and re-calculate the Table but using the variable `perweight` as a weighting variable.
-
-```{r}
-varlist <- c("hlth", "nwhite", "age", "yedu", "famsize", "empl", "inc")
-NHIS_temp_diff <- NHIS_temp %>%
-  group_by(fml, hi) %>%
-  summarise(wmean = weighted.mean(age,perweight, na.rm = TRUE), mean = mean(age, na.rm = TRUE)) 
-```
-
-```{r NHIS2009_diff_table2,results='asis'}
-knitr::kable(NHIS_temp_diff, digits = 3)
-```

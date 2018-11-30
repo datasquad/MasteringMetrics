@@ -1,0 +1,18 @@
+bookdown::gitbook:
+  config:
+    toc:
+      collapse: section
+      before: |
+        <li><strong><a href="./">Mastering Metrics R Code</a></strong></li>
+    edit:
+      link: https://github.com/jrnold/masteringmetrics/edit/master/%s
+      text: "Edit"
+    sharing: no
+  md_extensions: "+native_divs"
+  download: ["pdf"]
+  keep_md: yes
+
+bookdown::pdf_book:
+  keep_tex: yes
+  md_extensions: ""
+  latex_engine: "xelatex"
